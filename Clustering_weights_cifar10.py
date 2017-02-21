@@ -113,28 +113,6 @@ def initialize_variables(exist, file_name):
             'fc3': tf.Variable(tf.constant(0.0, shape=[NUM_CLASSES]))
         }
     return (weights, biases)
-
-def prune_weights(percent_cov, percent_fc, weights, weights_mask, mask_dir, biases, biases_mask):
-    keys_cov = ['cov1', 'cov2']
-    keys_fc = ['fc1', 'fc2', 'fc3']
-    next_threshold = {}
-    for key in keys_cov:
-        weight = weights[key].eval()
-        biase = biases[key].eval()
-        threshold = np.percentile(np.abs(weight), percent_cov)
-        weights_mask[key] = np.abs(weight) > threshold
-        threshold = np.percentile(np.abs(biase),percent_cov)
-        biases_mask[key] = np.abs(biase) > threshold
-    for key in keys_fc:
-        weight = weights[key].eval()
-        biase = biases[key].eval()
-        threshold = np.percentile(np.abs(weight), percent_fc)
-        weights_mask[key] = np.abs(weight) > threshold
-        threshold = np.percentile(np.abs(biase),percent_fc)
-        biases_mask[key] = np.abs(biase) > threshold
-    with open(mask_dir, 'wb') as f:
-        pickle.dump((weights_mask,biases_mask), f)
-
 def initialize_weights_mask(first_time_training, mask_dir):
     NUM_CHANNELS = 3
     NUM_CLASSES = 10
@@ -177,28 +155,6 @@ def prune_info(weights, counting):
     if (counting == 1):
         (non_zeros, total) = calculate_non_zero_weights(weights['fc1'].eval())
         print('take fc1 as example, {} nonzeros, in total {} weights'.format(non_zeros, total))
-def plot_weights(weights,pruning_info):
-        keys = ['cov1','cov2','fc1', 'fc2','fc2']
-        fig, axrr = plt.subplots( 2, 2)  # create figure &  axis
-        fig_pos = [(0,0), (0,1), (1,0), (1,1)]
-        index = 0
-        for key in keys:
-            weight = weights[key].eval().flatten()
-            # print (weight)
-            size_weight = len(weight)
-            weight = weight.reshape(-1,size_weight)[:,0:size_weight]
-            x_pos, y_pos = fig_pos[index]
-            #take out zeros
-            weight = weight[weight != 0]
-            # print (weight)
-            hist,bins = np.histogram(weight, bins=100)
-            width = 0.7 * (bins[1] - bins[0])
-            center = (bins[:-1] + bins[1:]) / 2
-            axrr[x_pos, y_pos].bar(center, hist, align = 'center', width = width)
-            axrr[x_pos, y_pos].set_title(key)
-            index = index + 1
-        fig.savefig('fig_v3/weights'+pruning_info)
-        plt.close(fig)
 
 
 def cov_network(images, weights, biases, keep_prob):
@@ -461,7 +417,7 @@ def main(argv = None):
         print('Pre quantisation model has an accuracy of {}'.format(test_acc))
         print(78*'-')
         start = time.time()
-        keys = ['cov1','cov2','fc1','fc2']
+        keys = ['cov1','cov2','fc1','fc2','fc3']
         weights_val = {}
         centroids = {}
         cluster_index = {}

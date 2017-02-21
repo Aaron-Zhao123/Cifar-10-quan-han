@@ -405,7 +405,7 @@ def main(argv = None):
         training_data_list = []
 
         weights_orgs, biases_orgs, biases, centroids_var, weights_index = initialize_variables(PREV_MODEL_EXIST, NUMBER_OF_CLUSTER)
-        weights = compute_weights(weights_index, centroids_var)
+        weights = compute_weights(weights_index, centroids_var, NUMBER_OF_CLUSTER)
 
         x = tf.placeholder(tf.float32, [None, 32, 32, 3])
         y = tf.placeholder(tf.float32, [None, NUM_CLASSES])

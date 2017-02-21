@@ -82,7 +82,7 @@ def initialize_variables(exist, NUMBER_OF_CLUSTER, pretrain):
         'fc2': tf.Variable(biases_orgs['fc2']),
         'fc3': tf.Variable(biases_orgs['fc3'])
     }
-    return (weights_orgs, biases_orgs, biases, centroids_var, weights_index)
+    return (weights_orgs, biases_orgs, biases, centroids_var, weights_index, cluster_index)
 
 def compute_weights(weights_index, centroids_var, Number_of_cluster):
     keys = ['cov1','cov2','fc1','fc2', 'fc3']
@@ -416,7 +416,7 @@ def main(argv = None):
 
         training_data_list = []
 
-        weights_orgs, biases_orgs, biases, centroids_var, weights_index = initialize_variables(PREV_MODEL_EXIST, NUMBER_OF_CLUSTER, pretrain)
+        weights_orgs, biases_orgs, biases, centroids_var, weights_index, cluster_index = initialize_variables(PREV_MODEL_EXIST, NUMBER_OF_CLUSTER, pretrain)
         weights = compute_weights(weights_index, centroids_var, NUMBER_OF_CLUSTER)
 
         x = tf.placeholder(tf.float32, [None, 32, 32, 3])
@@ -524,16 +524,17 @@ def main(argv = None):
                                     x: batch_x,
                                     y: batch_y,
                                     keep_prob: dropout})
+            if (TRAIN == 1):
+                with open('cluster_trained'+str(NUMBER_OF_CLUSTER)+'.pkl','wb') as f:
+                    pickle.dump((weights_orgs, biases_orgs, cluster_index,centroids),f)
+
             test_acc = sess.run(accuracy, feed_dict = {
                                     x: images_test,
                                     y: labels_test,
                                     keep_prob: 1.0})
             print("test accuracy is {}".format(test_acc))
                 # save_pkl_model(weights, biases, model_name)
-            save_pkl_model(weights, biases, 'clusterv'+str(NUMBER_OF_CLUSTER)+'.pkl')
-            with open('cluster_trained'+str(NUMBER_OF_CLUSTER)+'.pkl','wb') as f:
-                pickle.dump((weights_orgs, biases_orgs, cluster_index,centroids),f)
-            return test_acc
+        return test_acc
     except Usage, err:
         print >> sys.stderr, err.msg
         print >> sys.stderr, "for help use --help"

@@ -1,6 +1,6 @@
 import os
 import quantized_training
-import Cluster_weights_cifar10
+import Clustering_weights_cifar10
 # os.system('python training_v3.py -p0')
 # os.system('python training_v3.py -p1')
 # os.system('python training_v3.py -p2')

@@ -56,7 +56,6 @@ def initialize_variables(exist, NUMBER_OF_CLUSTER):
     if (exist == 1):
         with open('quantize_info'+str(NUMBER_OF_CLUSTER)+'.pkl','rb') as f:
             weights_orgs, biases_orgs, cluster_index,centroids = pickle.load(f)
-        }
     centroids_var = {
         'cov1': tf.Variable(centroids['cov1']),
         'cov2': tf.Variable(centroids['cov2']),

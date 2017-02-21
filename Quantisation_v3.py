@@ -203,7 +203,7 @@ def main(argv = None):
             #     print ("model found and restored")
 
             # print(weights['fc1'].eval())
-            keys = ['cov1','cov2','fc1','fc2']
+            keys = ['cov1','cov2','fc1','fc2','fc3']
             weights_val = {}
             centroids = {}
             cluster_index = {}

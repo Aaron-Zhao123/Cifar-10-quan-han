@@ -355,6 +355,8 @@ def main(argv = None):
     try:
         try:
             opts = argv
+            TRAIN = 1
+            NUMBER_OF_CLUSTER = 8
             for item in opts:
                 print (item)
                 opt = item[0]
@@ -363,6 +365,10 @@ def main(argv = None):
                     pruning_cov = val
                 if (opt == '-pfc'):
                     pruning_fc = val
+                if (opt == '-t'):
+                    TRAIN = val
+                if (opt == '-cluster'):
+                    NUMBER_OF_CLUSTER = val
             print('pruning count is {}, {}'.format(pruning_cov, pruning_fc))
         except getopt.error, msg:
             raise Usage(msg)
@@ -375,11 +381,9 @@ def main(argv = None):
         NUM_EPOCHS_PER_DECAY = 350.0
         MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
         DISPLAY_FREQ = 20
-        TRAIN = 1
         TEST = 0
         TRAIN_OR_TEST = 0
         NUM_CHANNELS = 3
-        NUMBER_OF_CLUSTER = 8
         DOCKER = 0
         mask_dir = './weights_log/'
         base_model_name = './data/20170206.pkl'
@@ -477,7 +481,8 @@ def main(argv = None):
             print(78*'-')
             start = time.time()
             if TRAIN == 1:
-                for i in range(0,60000):
+                # for i in range(0,60000):
+                for i in range(0,20):
                     (batch_x, batch_y) = t_data.feed_next_batch(BATCH_SIZE)
                     train_acc, cross_en = sess.run([accuracy, loss_value], feed_dict = {
                                     x: batch_x,

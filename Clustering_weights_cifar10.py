@@ -360,7 +360,10 @@ def main(argv = None):
     TRAIN_OR_TEST = 0
     NUM_CHANNELS = 3
     DOCKER = 0
-    NUMBER_OF_CLUSTER = 8
+    if (argv == None):
+        NUMBER_OF_CLUSTER = 8
+    else:
+        NUMBER_OF_CLUSTER = argv
 
     mask_dir = './weights_log/'
     base_model_name = './data/20170206.pkl'

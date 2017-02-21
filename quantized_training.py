@@ -68,7 +68,7 @@ def initialize_variables(exist, NUMBER_OF_CLUSTER):
         'cov2': tf.constant(cluster_index['cov2'],tf.float32),
         'fc1': tf.constant(cluster_index['fc1'],tf.float32),
         'fc2': tf.constant(cluster_index['fc2'],tf.float32),
-        'fc3': tf.constant(cluster_index['fc3'],tf.float33)
+        'fc3': tf.constant(cluster_index['fc3'],tf.float32)
     }
     biases = {
         'cov1': tf.Variable(biases_orgs['cov1']),

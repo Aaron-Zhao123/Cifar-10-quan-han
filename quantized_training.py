@@ -49,13 +49,18 @@ def _variable_on_cpu(name, shape, initializer):
         var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
     return var
 
-def initialize_variables(exist, NUMBER_OF_CLUSTER):
+def initialize_variables(exist, NUMBER_OF_CLUSTER, pretrain):
     NUM_CHANNELS = 3
     IMAGE_SIZE = 32
     NUM_CLASSES = 10
     if (exist == 1):
-        with open('quantize_info'+str(NUMBER_OF_CLUSTER)+'.pkl','rb') as f:
-            weights_orgs, biases_orgs, cluster_index,centroids = pickle.load(f)
+        if (pretrain == 1):
+            with open('quantize_info'+str(NUMBER_OF_CLUSTER)+'.pkl','rb') as f:
+                weights_orgs, biases_orgs, cluster_index,centroids = pickle.load(f)
+        else:
+            with open('cluster_trained'+str(NUMBER_OF_CLUSTER)+'.pkl','rb') as f:
+                weights_orgs, biases_orgs, cluster_index,centroids = pickle.load(f)
+
     centroids_var = {
         'cov1': tf.Variable(centroids['cov1']),
         'cov2': tf.Variable(centroids['cov2']),
@@ -357,6 +362,7 @@ def main(argv = None):
             opts = argv
             TRAIN = 1
             NUMBER_OF_CLUSTER = 8
+            pretrain = 0
             for item in opts:
                 print (item)
                 opt = item[0]
@@ -369,6 +375,8 @@ def main(argv = None):
                     TRAIN = val
                 if (opt == '-cluster'):
                     NUMBER_OF_CLUSTER = val
+                if (opt == '-pretrain'):
+                    pretrain = val
             print('pruning count is {}, {}'.format(pruning_cov, pruning_fc))
         except getopt.error, msg:
             raise Usage(msg)
@@ -408,7 +416,7 @@ def main(argv = None):
 
         training_data_list = []
 
-        weights_orgs, biases_orgs, biases, centroids_var, weights_index = initialize_variables(PREV_MODEL_EXIST, NUMBER_OF_CLUSTER)
+        weights_orgs, biases_orgs, biases, centroids_var, weights_index = initialize_variables(PREV_MODEL_EXIST, NUMBER_OF_CLUSTER, pretrain)
         weights = compute_weights(weights_index, centroids_var, NUMBER_OF_CLUSTER)
 
         x = tf.placeholder(tf.float32, [None, 32, 32, 3])
@@ -516,15 +524,15 @@ def main(argv = None):
                                     x: batch_x,
                                     y: batch_y,
                                     keep_prob: dropout})
-            print('hi?')
-            if (TEST == 1):
-                test_acc = sess.run(accuracy, feed_dict = {
-                                        x: images_test,
-                                        y: labels_test,
-                                        keep_prob: 1.0})
-                print("test accuracy is {}".format(test_acc))
+            test_acc = sess.run(accuracy, feed_dict = {
+                                    x: images_test,
+                                    y: labels_test,
+                                    keep_prob: 1.0})
+            print("test accuracy is {}".format(test_acc))
                 # save_pkl_model(weights, biases, model_name)
             save_pkl_model(weights, biases, 'clusterv'+str(NUMBER_OF_CLUSTER)+'.pkl')
+            with open('cluster_trained'+str(NUMBER_OF_CLUSTER)+'.pkl','wb') as f:
+                pickle.dump((weights_orgs, biases_orgs, cluster_index,centroids),f)
             return test_acc
     except Usage, err:
         print >> sys.stderr, err.msg

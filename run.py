@@ -17,21 +17,32 @@ pfc = 0
 retrain = 0
 cluster = [2,4,8,16,32,64]
 while (count < len(cluster)):
+    Clustering_weights_cifar10.main(cluster[count])
+    # measure acc
     param = [
         ('-pcov',pcov),
         ('-pfc',pfc),
         ('-t', 0),
-        ('-cluster',cluster[count])
+        ('-cluster',cluster[count]),
+        ('-pretrain',1)
         ]
-    Clustering_weights_cifar10.main(cluster[count])
     pre_train_acc = quantized_training.main(param)
     param = [
         ('-pcov',pcov),
         ('-pfc',pfc),
+        ('-t', 1),
+        ('-cluster',cluster[count])
+        ('-pretrain',1)
+        ]
+    _ = quantized_training.main(param)
+
+    param = [
+        ('-pcov',pcov),
+        ('-pfc',pfc),
         ('-t', 0),
         ('-cluster',cluster[count])
+        ('-pretrain',0)
         ]
-    train_acc = quantized_training.main(param)
 
     pt_acc_list.append(pre_train_acc)
     acc_list.append(train_acc)

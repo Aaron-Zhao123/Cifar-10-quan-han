@@ -481,8 +481,8 @@ def main(argv = None):
             print(78*'-')
             start = time.time()
             if TRAIN == 1:
-                # for i in range(0,60000):
-                for i in range(0,20):
+                # for i in range(0,20):
+                for i in range(0,60000):
                     (batch_x, batch_y) = t_data.feed_next_batch(BATCH_SIZE)
                     train_acc, cross_en = sess.run([accuracy, loss_value], feed_dict = {
                                     x: batch_x,
@@ -524,7 +524,7 @@ def main(argv = None):
                                         keep_prob: 1.0})
                 print("test accuracy is {}".format(test_acc))
                 # save_pkl_model(weights, biases, model_name)
-            save_pkl_model(weights, biases, model_name+'clusterv'+str(NUMBER_OF_CLUSTER)+'.pkl')
+            save_pkl_model(weights, biases, 'clusterv'+str(NUMBER_OF_CLUSTER)+'.pkl')
             return test_acc
     except Usage, err:
         print >> sys.stderr, err.msg

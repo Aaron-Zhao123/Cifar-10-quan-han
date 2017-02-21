@@ -13,7 +13,7 @@ count = 0
 pcov = 0
 pfc = 0
 retrain = 0
-while (count < 9):
+while (count < 1):
     param = [
         ('-pcov',pcov),
         ('-pfc',pfc)

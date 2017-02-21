@@ -6,8 +6,7 @@ import os
 import pickle
 import time
 import getopt
-import sklearn
-from sklearn.cluster import KMeans
+
 from cifar10 import img_size, num_channels, num_classes
 
 class Usage(Exception):
@@ -50,90 +49,50 @@ def _variable_on_cpu(name, shape, initializer):
         var = tf.get_variable(name, shape, initializer=initializer, dtype=dtype)
     return var
 
-def initialize_variables(exist, file_name):
+def initialize_variables(exist, NUMBER_OF_CLUSTER):
     NUM_CHANNELS = 3
     IMAGE_SIZE = 32
     NUM_CLASSES = 10
-    keys = ['cov1','cov2','fc1','fc2','fc3']
     if (exist == 1):
-        with open(file_name, 'rb') as f:
-            (weights_val, biases_val) = pickle.load(f)
-        weights = {
-            'cov1': tf.Variable(weights_val['cov1']),
-            'cov2': tf.Variable(weights_val['cov2']),
-            'fc1': tf.Variable(weights_val['fc1']),
-            'fc2': tf.Variable(weights_val['fc2']),
-            'fc3': tf.Variable(weights_val['fc3'])
+        with open('quantize_info'+str(NUMBER_OF_CLUSTER)+'.pkl','rb') as f:
+            weights_orgs, biases_orgs, cluster_index,centroids = pickle.load(f)
         }
-        biases = {
-            'cov1': tf.Variable(biases_val['cov1']),
-            'cov2': tf.Variable(biases_val['cov2']),
-            'fc1': tf.Variable(biases_val['fc1']),
-            'fc2': tf.Variable(biases_val['fc2']),
-            'fc3': tf.Variable(biases_val['fc3'])
-        }
-    else:
-        weights = {
-            # 'cov1': _variable_with_weight_decay('weights_cov1' ,
-            #                                     shape = [5, 5, NUM_CHANNELS, 64],
-            #                                     stddev = 5e-2,
-            #                                     wd=0.004),
-            # 'cov2': _variable_with_weight_decay('weights_cov2' ,
-            #                                     shape = [5, 5, 64, 64],
-            #                                     stddev = 5e-2,
-            #                                     wd=0.004),
-            # 'fc1': _variable_with_weight_decay('weights_fc1' ,
-            #                                     shape = [IMAGE_SIZE // 4 * IMAGE_SIZE // 4 * 64, 384],
-            #                                     stddev = 5e-2,
-            #                                     wd=0.004),
-            # 'fc2': _variable_with_weight_decay('weights_fc2' ,
-            #                                     shape = [384, 192],
-            #                                     stddev = 5e-2,
-            #                                     wd=0.004),
-            # 'fc3': _variable_with_weight_decay('weights_fc3' ,
-            #                                     shape = [192, NUM_CLASSES],
-            #                                     stddev = 1/192.0,
-            #                                     wd=0.0)
-            'cov1': tf.Variable(tf.truncated_normal([5, 5, NUM_CHANNELS, 64],
-                                                        stddev=5e-2)),
-            'cov2': tf.Variable(tf.truncated_normal([5, 5, 64, 64],
-                                                        stddev=5e-2)),
-            'fc1': tf.Variable(tf.truncated_normal([6 * 6 * 64, 384],
-                                                        stddev=0.04)),
-            'fc2': tf.Variable(tf.random_normal([384, 192],
-                                                        stddev=0.04)),
-            'fc3': tf.Variable(tf.random_normal([192, NUM_CLASSES],
-                                                        stddev=1/192.0))
-        }
-        biases = {
-            'cov1': tf.Variable(tf.constant(0.1, shape=[64])),
-            'cov2': tf.Variable(tf.constant(0.1, shape=[64])),
-            'fc1': tf.Variable(tf.constant(0.1, shape=[384])),
-            'fc2': tf.Variable(tf.constant(0.1, shape=[192])),
-            'fc3': tf.Variable(tf.constant(0.0, shape=[NUM_CLASSES]))
-        }
-    return (weights, biases)
+    centroids_var = {
+        'cov1': tf.Variable(centroids['cov1']),
+        'cov2': tf.Variable(centroids['cov2']),
+        'fc1': tf.Variable(centroids['fc1']),
+        'fc2': tf.Variable(centroids['fc2']),
+        'fc3': tf.Variable(centroids['fc3'])
+    }
+    weights_index = {
+        'cov1': tf.constant(cluster_index['cov1'],tf.float32),
+        'cov2': tf.constant(cluster_index['cov2'],tf.float32),
+        'fc1': tf.constant(cluster_index['fc1'],tf.float32),
+        'fc2': tf.constant(cluster_index['fc2'],tf.float32),
+        'fc3': tf.constant(cluster_index['fc3'],tf.float33)
+    }
+    biases = {
+        'cov1': tf.Variable(biases_orgs['cov1']),
+        'cov2': tf.Variable(biases_orgs['cov2']),
+        'fc1': tf.Variable(biases_orgs['fc1']),
+        'fc2': tf.Variable(biases_orgs['fc2']),
+        'fc3': tf.Variable(biases_orgs['fc3'])
+    }
+    return (weights_orgs, biases_orgs, biases, centroids_var, weights_index)
 
-def prune_weights(percent_cov, percent_fc, weights, weights_mask, mask_dir, biases, biases_mask):
-    keys_cov = ['cov1', 'cov2']
-    keys_fc = ['fc1', 'fc2', 'fc3']
-    next_threshold = {}
-    for key in keys_cov:
-        weight = weights[key].eval()
-        biase = biases[key].eval()
-        threshold = np.percentile(np.abs(weight), percent_cov)
-        weights_mask[key] = np.abs(weight) > threshold
-        threshold = np.percentile(np.abs(biase),percent_cov)
-        biases_mask[key] = np.abs(biase) > threshold
-    for key in keys_fc:
-        weight = weights[key].eval()
-        biase = biases[key].eval()
-        threshold = np.percentile(np.abs(weight), percent_fc)
-        weights_mask[key] = np.abs(weight) > threshold
-        threshold = np.percentile(np.abs(biase),percent_fc)
-        biases_mask[key] = np.abs(biase) > threshold
-    with open(mask_dir, 'wb') as f:
-        pickle.dump((weights_mask,biases_mask), f)
+def compute_weights(weights_index, centroids_var, Number_of_cluster):
+    keys = ['cov1','cov2','fc1','fc2', 'fc3']
+    weights = {}
+    for key in keys:
+        # weights[key] = tf.to_float(tf.equal(weights_index[key], 1)) * centroids_var[key][0]
+        print(weights_index[key])
+        for i in range(1, Number_of_cluster + 1):
+            if (i == 1):
+                weights[key] = tf.cast(tf.equal(weights_index[key], 1),tf.float32) * tf.cast(centroids_var[key][0], tf.float32)
+            else:
+                weights[key] = weights[key] + tf.to_float(tf.equal(weights_index[key], i)) * tf.cast(centroids_var[key][i-1], tf.float32)
+    return weights
+
 
 def initialize_weights_mask(first_time_training, mask_dir):
     NUM_CHANNELS = 3
@@ -392,107 +351,180 @@ def ClipIfNotNone(grad):
     return tf.clip_by_value(grad, -1, 1)
 
 def main(argv = None):
-    NUM_CLASSES = 10
-    BATCH_SIZE = 128
-    INITIAL_LEARNING_RATE = 0.001
-    LEARNING_RATE_DECAY_FACTOR = 0.1
-    NUM_EPOCHS_PER_DECAY = 350.0
-    MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
-    DISPLAY_FREQ = 20
-    TRAIN = 0
-    TEST = 1
-    TRAIN_OR_TEST = 0
-    NUM_CHANNELS = 3
-    DOCKER = 0
-    NUMBER_OF_CLUSTER = 8
-
-    mask_dir = './weights_log/'
-    base_model_name = './data/20170206.pkl'
-    model_dir = './weights_log/'
-    PREV_MODEL_EXIST = 1
-
-    (weights_mask,biases_mask)= initialize_weights_mask(0, mask_dir + 'pruned_mask.pkl')
-    cifar10.maybe_download_and_extract()
-    class_names = cifar10.load_class_names()
-    images_train, cls_train, labels_train = cifar10.load_training_data()
-    images_test, cls_test, labels_test = cifar10.load_test_data()
-    t_data = training_data(images_train, labels_train)
-
-    DATA_CNT = len(images_train)
-    NUMBER_OF_BATCH = DATA_CNT / BATCH_SIZE
-
-    weights, biases = initialize_variables(PREV_MODEL_EXIST, model_dir+'pruned_model.pkl')
-
-    x = tf.placeholder(tf.float32, [None, 32, 32, 3])
-    y = tf.placeholder(tf.float32, [None, NUM_CLASSES])
-
-    keep_prob = tf.placeholder(tf.float32)
-    images = pre_process(x, 0)
-
-    pred = cov_network(images, weights, biases, keep_prob)
-    cross_entropy = tf.nn.softmax_cross_entropy_with_logits(pred, y)
-    loss_value = tf.reduce_mean(cross_entropy)
-
-    correct_prediction = tf.equal(tf.argmax(pred,1), tf.argmax(y,1))
-    accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-
-    saver = tf.train.Saver()
-
-    global_step = tf.contrib.framework.get_or_create_global_step()
+    if (argv is None):
+        argv = sys.argv
+    try:
+        try:
+            opts = argv
+            for item in opts:
+                print (item)
+                opt = item[0]
+                val = item[1]
+                if (opt == '-pcov'):
+                    pruning_cov = val
+                if (opt == '-pfc'):
+                    pruning_fc = val
+            print('pruning count is {}, {}'.format(pruning_cov, pruning_fc))
+        except getopt.error, msg:
+            raise Usage(msg)
+        NUM_CLASSES = 10
+        dropout = 0.8 # probability of keep
+        BATCH_SIZE = 128
+        NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 50000
+        INITIAL_LEARNING_RATE = 0.001
+        LEARNING_RATE_DECAY_FACTOR = 0.1
+        NUM_EPOCHS_PER_DECAY = 350.0
+        MOVING_AVERAGE_DECAY = 0.9999     # The decay to use for the moving average.
+        DISPLAY_FREQ = 20
+        TRAIN = 1
+        TEST = 0
+        TRAIN_OR_TEST = 0
+        NUM_CHANNELS = 3
+        NUMBER_OF_CLUSTER = 8
+        DOCKER = 0
+        mask_dir = './weights_log/'
+        base_model_name = './data/20170206.pkl'
+        model_dir = './weights_log/'
+        # model_name = 'test.pkl'
+        # model_name = '../tf_official_docker/tmp.pkl'
+        PREV_MODEL_EXIST = 1
 
 
-    init = tf.global_variables_initializer()
-    print('Graph launching ..')
-    with tf.Session() as sess:
-        sess.run(init)
+        # cls_train returns as an integer, labels is the array
+        print('pruning on cov is {}. on fc is {}'.format(pruning_cov, pruning_fc))
+        (weights_mask,biases_mask)= initialize_weights_mask(0, mask_dir + 'pruned_mask.pkl')
+        cifar10.maybe_download_and_extract()
+        class_names = cifar10.load_class_names()
 
-        # prune the network
-        keys = ['cov1', 'cov2', 'fc1', 'fc2', 'fc3']
-        for key in keys:
-            sess.run(weights[key].assign(weights[key].eval()*weights_mask[key]))
-            sess.run(biases[key].assign(biases[key].eval()*biases_mask[key]))
+        images_train, cls_train, labels_train = cifar10.load_training_data()
+        images_test, cls_test, labels_test = cifar10.load_test_data()
+        t_data = training_data(images_train, labels_train)
 
-        print('quantisation process starts..')
-        prune_info(weights, 0)
-        test_acc = sess.run(accuracy, feed_dict = {
-                                x: images_test,
-                                y: labels_test,
-                                keep_prob: 1.0})
-        print('Pre quantisation model has an accuracy of {}'.format(test_acc))
-        print(78*'-')
-        start = time.time()
-        keys = ['cov1','cov2','fc1','fc2']
-        weights_val = {}
-        centroids = {}
-        cluster_index = {}
-        weights_orgs = {}
-        biases_orgs = {}
+        DATA_CNT = len(images_train)
+        NUMBER_OF_BATCH = DATA_CNT / BATCH_SIZE
 
-        for key in keys:
-            weight_org = weights[key].eval()
-            weight= weight_org.flatten()
-            weight_val = weight[weight != 0]
-            data = np.expand_dims(weight_val, axis = 1)
-            # use kmeans to cluster
-            kmeans = KMeans(n_clusters= NUMBER_OF_CLUSTER, random_state=0).fit(data)
-            centroid =  kmeans.cluster_centers_
-            # add centroid value
-            centroids[key] = centroid
-            # add index value
-            # indexs are stored in weight_org
-            index = kmeans.labels_ + 1
-            for w in np.nditer(weight_org, op_flags=['readwrite']):
-                if (w != 0):
-                    w[...] = kmeans.predict(w)+1
-            # sys.exit()
-            cluster_index[key] = weight_org
-            weights_orgs[key] = weights[key].eval()
-            biases_orgs[key] = biases[key].eval()
-        print('quantisation done')
-        print(78*'-')
-        print("test accuracy is {}".format(test_acc))
-        with open('quantize_info'+str(NUMBER_OF_CLUSTER)+'.pkl','wb') as f:
-            pickle.dump((weights_orgs, biases_orgs, cluster_index,centroids),f)
+        training_data_list = []
 
+        weights_orgs, biases_orgs, biases, centroids_var, weights_index = initialize_variables(PREV_MODEL_EXIST, NUMBER_OF_CLUSTER)
+        weights = compute_weights(weights_index, centroids_var)
+
+        x = tf.placeholder(tf.float32, [None, 32, 32, 3])
+        y = tf.placeholder(tf.float32, [None, NUM_CLASSES])
+
+        if (TRAIN == 1):
+            TRAIN_OR_TEST = 1
+        else:
+            TRAIN_OR_TEST = 0
+
+        keep_prob = tf.placeholder(tf.float32)
+        images = pre_process(x, TRAIN_OR_TEST)
+        # images = pre_process(x, 1)
+        pred = cov_network(images, weights, biases, keep_prob)
+        # print(pred)
+        cross_entropy = tf.nn.softmax_cross_entropy_with_logits(pred, y)
+        loss_value = tf.reduce_mean(cross_entropy)
+
+        correct_prediction = tf.equal(tf.argmax(pred,1), tf.argmax(y,1))
+        accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+
+        saver = tf.train.Saver()
+
+
+        global_step = tf.contrib.framework.get_or_create_global_step()
+
+        num_batches_per_epoch = NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN / BATCH_SIZE
+        decay_steps = int(num_batches_per_epoch * NUM_EPOCHS_PER_DECAY)
+
+        # Decay the learning rate exponentially based on the number of steps.
+        lr = tf.train.exponential_decay(INITIAL_LEARNING_RATE,
+                                      global_step,
+                                      decay_steps,
+                                      LEARNING_RATE_DECAY_FACTOR,
+                                      staircase=True)
+
+        opt = tf.train.GradientDescentOptimizer(lr)
+        grads = opt.compute_gradients(loss_value)
+        org_grads = [(ClipIfNotNone(grad), var) for grad, var in grads]
+        new_grads = mask_gradients(weights, org_grads, weights_mask, biases, biases_mask)
+        #
+        # Apply gradients.
+        train_step = opt.apply_gradients(new_grads, global_step=global_step)
+        # train_step = tf.train.GradientDescentOptimizer(INITIAL_LEARNING_RATE).minimize(loss_value)
+        # variable_averages = tf.train.ExponentialMovingAverage(
+        #   MOVING_AVERAGE_DECAY, global_step)
+        # variables_averages_op = variable_averages.apply(tf.trainable_variables())
+
+
+        init = tf.global_variables_initializer()
+        accuracy_list = np.zeros(30)
+        accuracy_list = np.zeros(5)
+        # Launch the graph
+        print('Graph launching ..')
+        with tf.Session() as sess:
+            sess.run(init)
+            # restore model if exists
+            # if (os.path.isfile("tmp_20160130/model.meta")):
+            #     op = tf.train.import_meta_graph("tmp_20160130/model.meta")
+            #     op.restore(sess,tf.train.latest_checkpoint('tmp_20160130/'))
+            #     print ("model found and restored")
+
+            keys = ['cov1', 'cov2', 'fc1', 'fc2', 'fc3']
+            for key in keys:
+                sess.run(weights[key].assign(weights[key].eval()*weights_mask[key]))
+                sess.run(biases[key].assign(biases[key].eval()*biases_mask[key]))
+
+            print('pre train pruning info')
+            prune_info(weights, 0)
+            print(78*'-')
+            start = time.time()
+            if TRAIN == 1:
+                for i in range(0,60000):
+                    (batch_x, batch_y) = t_data.feed_next_batch(BATCH_SIZE)
+                    train_acc, cross_en = sess.run([accuracy, loss_value], feed_dict = {
+                                    x: batch_x,
+                                    y: batch_y,
+                                    keep_prob: 1.0})
+                    if (i % DISPLAY_FREQ == 0):
+                        # prune_info(weights, 0)
+                        print('This is the {}th iteration, time is {}'.format(
+                            i,
+                            time.time() - start
+                        ))
+                        print("accuracy is {} and cross entropy is {}".format(
+                            train_acc,
+                            cross_en
+                        ))
+                        # accuracy_list = np.concatenate((np.array([train_acc]),accuracy_list[0:29]))
+                        accuracy_list = np.concatenate((np.array([train_acc]),accuracy_list[0:4]))
+                        if (np.mean(accuracy_list) > 0.8):
+                            print("training accuracy is large, show the list: {}".format(accuracy_list))
+                            test_acc = sess.run(accuracy, feed_dict = {
+                                                    x: images_test,
+                                                    y: labels_test,
+                                                    keep_prob: 1.0})
+                            # accuracy_list = np.zeros(30)
+                            accuracy_list = np.zeros(5)
+                            print('test accuracy is {}'.format(test_acc))
+                            if (test_acc > 0.820):
+                                print('Exiting the training, test accuracy is {}'.format(test_acc))
+                                break
+                    _ = sess.run(train_step, feed_dict = {
+                                    x: batch_x,
+                                    y: batch_y,
+                                    keep_prob: dropout})
+            print('hi?')
+            if (TEST == 1):
+                test_acc = sess.run(accuracy, feed_dict = {
+                                        x: images_test,
+                                        y: labels_test,
+                                        keep_prob: 1.0})
+                print("test accuracy is {}".format(test_acc))
+                # save_pkl_model(weights, biases, model_name)
+            save_pkl_model(weights, biases, model_name+'clusterv'+str(NUMBER_OF_CLUSTER)+'.pkl')
+            return test_acc
+    except Usage, err:
+        print >> sys.stderr, err.msg
+        print >> sys.stderr, "for help use --help"
+        return
 if __name__ == '__main__':
     sys.exit(main())

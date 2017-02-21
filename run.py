@@ -21,7 +21,7 @@ while (count < len(cluster)):
         ('-pcov',pcov),
         ('-pfc',pfc),
         ('-t', 0),
-        ('-cluster',cluster[i])
+        ('-cluster',cluster[count])
         ]
     Cluster_weights_cifar10.main(cluster[i])
     pre_train_acc = quantized_training.main(param)
@@ -29,7 +29,7 @@ while (count < len(cluster)):
         ('-pcov',pcov),
         ('-pfc',pfc),
         ('-t', 0),
-        ('-cluster',cluster[i])
+        ('-cluster',cluster[count])
         ]
     train_acc = quantized_training.main(param)
 

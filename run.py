@@ -48,7 +48,7 @@ while (count < len(cluster)):
     pt_acc_list.append(pre_train_acc)
     acc_list.append(train_acc)
     count = count + 1
-    print (acc)
+print('accuracy summary: {}'.format(pt_acc_list))
 print('accuracy summary: {}'.format(acc_list))
 # acc_list = [0.82349998, 0.8233, 0.82319999, 0.81870002, 0.82050002, 0.80400002, 0.74940002, 0.66060001, 0.5011]
 with open("ptacc_cifar_quantize_han.txt", "w") as f:

@@ -43,6 +43,7 @@ while (count < len(cluster)):
         ('-cluster',cluster[count]),
         ('-pretrain',0)
         ]
+    train_acc = quantized_training.main(param)
 
     pt_acc_list.append(pre_train_acc)
     acc_list.append(train_acc)

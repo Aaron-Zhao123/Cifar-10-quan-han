@@ -82,7 +82,7 @@ def initialize_variables(exist, NUMBER_OF_CLUSTER, pretrain):
         'fc2': tf.Variable(biases_orgs['fc2']),
         'fc3': tf.Variable(biases_orgs['fc3'])
     }
-    return (weights_orgs, biases_orgs, biases, centroids_var, weights_index, cluster_index)
+    return (weights_orgs, biases_orgs, biases, centroids_var, weights_index, cluster_index, centroids)
 
 def compute_weights(weights_index, centroids_var, Number_of_cluster):
     keys = ['cov1','cov2','fc1','fc2', 'fc3']
@@ -416,7 +416,7 @@ def main(argv = None):
 
         training_data_list = []
 
-        weights_orgs, biases_orgs, biases, centroids_var, weights_index, cluster_index = initialize_variables(PREV_MODEL_EXIST, NUMBER_OF_CLUSTER, pretrain)
+        weights_orgs, biases_orgs, biases, centroids_var, weights_index, cluster_index, centroids = initialize_variables(PREV_MODEL_EXIST, NUMBER_OF_CLUSTER, pretrain)
         weights = compute_weights(weights_index, centroids_var, NUMBER_OF_CLUSTER)
 
         x = tf.placeholder(tf.float32, [None, 32, 32, 3])
@@ -489,8 +489,8 @@ def main(argv = None):
             print(78*'-')
             start = time.time()
             if TRAIN == 1:
-                # for i in range(0,20):
-                for i in range(0,60000):
+                for i in range(0,20):
+                # for i in range(0,60000):
                     (batch_x, batch_y) = t_data.feed_next_batch(BATCH_SIZE)
                     train_acc, cross_en = sess.run([accuracy, loss_value], feed_dict = {
                                     x: batch_x,

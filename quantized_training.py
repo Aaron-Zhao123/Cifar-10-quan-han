@@ -529,7 +529,7 @@ def main(argv = None):
                 keys = ['cov1','cov2','fc1','fc2','fc3']
                 weights_save = {}
                 centroids_save = {}
-                with key in keys:
+                for key in keys:
                     centroids_save[key] = centroids_var[key].eval()
                     weights_save[key] = weights[key].eval()
 

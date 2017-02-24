@@ -17,7 +17,7 @@ pfc = 0
 retrain = 0
 cluster = [2,4,8,16,32]
 while (count < len(cluster)):
-    Clustering_weights_cifar10.main(cluster[count])
+    # Clustering_weights_cifar10.main(cluster[count])
     # measure acc
     param = [
         ('-pcov',pcov),

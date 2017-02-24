@@ -377,7 +377,8 @@ def main(argv = None):
                     NUMBER_OF_CLUSTER = val
                 if (opt == '-pretrain'):
                     pretrain = val
-            print('pruning count is {}, {}'.format(pruning_cov, pruning_fc))
+            # print('pruning count is {}, {}'.format(pruning_cov, pruning_fc))
+            print('pretrain is {}'.format(pretrain))
         except getopt.error, msg:
             raise Usage(msg)
         NUM_CLASSES = 10
@@ -525,8 +526,15 @@ def main(argv = None):
                                     y: batch_y,
                                     keep_prob: dropout})
             if (TRAIN == 1):
+                keys = ['cov1','cov2','fc1','fc2','fc3']
+                weights_save = {}
+                centroids_save = {}
+                with key in keys:
+                    centroids_save[key] = centroids_var[key].eval()
+                    weights_save[key] = weights[key].eval()
+
                 with open('cluster_trained'+str(NUMBER_OF_CLUSTER)+'.pkl','wb') as f:
-                    pickle.dump((weights_orgs, biases_orgs, cluster_index,centroids),f)
+                    pickle.dump((weights_save, biases_orgs, cluster_index,centroids_save),f)
 
             test_acc = sess.run(accuracy, feed_dict = {
                                     x: images_test,

@@ -34,7 +34,7 @@ while (count < len(cluster)):
         ('-cluster',cluster[count]),
         ('-pretrain',1)
         ]
-    # _ = quantized_training.main(param)
+    _ = quantized_training.main(param)
 
     param = [
         ('-pcov',pcov),
